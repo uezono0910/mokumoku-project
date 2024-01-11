@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  mokumoku-project:
+    container_name: mokumoku-project
+    hostname: mokumoku-project
+    build: ./docker/php
+    environment:
+      TZ: "Asia/Tokyo"
+    volumes:
+      - ./server:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/php.ini
+    restart: always
+    tty: true
+
+  mokumoku-project-nginx:
+    container_name: mokumoku-project-nginx
+    image: nginx
+    ports:
+      - 8088:8000
+    volumes:
+      - ./server:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - mokumoku-project
+    restart: always
+
+  # .envファイルの「DB_HOST」とサービス名を合わせる
+  db:
+    image: mysql:8.0
+    platform: linux/x86_64 # M1チップ対応のため追記
+    container_name: db-host
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      # .envファイルの「DB_DATABASE」とMYSQL_DATABASEを合わせる
+      MYSQL_USER: mokumoku
+      MYSQL_PASSWORD: mokumoku
+      MYSQL_DATABASE: mokumoku
+      TZ: "Asia/Tokyo"
+      # 文字コード指定
+    command: mysqld --innodb_use_native_aio=0
+      # - mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./docker/db/mysql-data:/var/lib/mysql
+      - ./docker/db/mysql/conf.d:/etc/mysql/conf.d
+    #      - ./docker/db/sql:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    restart: always
+    tty: true
+
+  # Mailpit コンテナ
+  # mailpit:
+  #   image: axllent/mailpit:latest
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
